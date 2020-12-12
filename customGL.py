@@ -1,17 +1,15 @@
 #NOTE: In progress -> Rainbow mode and pulsing/sweeping mode for colors/extras
 import numpy as np
 import math
-import pyrr
 import random
+import sys
 from PIL import Image
 from PySide2.QtGui import QOpenGLFunctions
 from PySide2.QtWidgets import QApplication, QMessageBox, QOpenGLWidget
-from PySide2.QtCore import QTime, Signal, SIGNAL, SLOT, QTimer
+from PySide2.QtCore import Signal, SIGNAL, SLOT, QTimer
 
 try:
     from OpenGL.GL import *
-    from OpenGL.GLUT import *
-    from OpenGL.GL.shaders import compileProgram, compileShader
 except ImportError:
     app = QApplication(sys.argv)
     messageBox = QMessageBox(QMessageBox.Critical, "OpenGL sample",
