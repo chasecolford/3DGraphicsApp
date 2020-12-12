@@ -12,7 +12,7 @@ try:
     from OpenGL.GL import *
 except ImportError:
     app = QApplication(sys.argv)
-    messageBox = QMessageBox(QMessageBox.Critical, "OpenGL sample",
+    messageBox = QMessageBox(QMessageBox.Critical, "OpenGL Dialog",
                                        "PyOpenGL must be installed to run this application. If you are seeing this, try what is in the 'show details' below." +
                                        "\nIf that fails, email me, please.",
                                        QMessageBox.Close)
@@ -393,7 +393,7 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
 
         #NOTE: The 4 vertices of the -> see: https://en.wikipedia.org/wiki/Tetrahedron | # 1.63299316186 == side length before normalize == math.sqrt(8/3)
         normalizer = math.sqrt(3/8)*2.5 #NOTE: this scales the shape to match the size of our other shapes (or close to)
-        n = normalizer #NOTE: this is just so our vertex definitions are long
+        n = normalizer #NOTE: this is just so our vertex definitions are not long
         verticies = (
             (math.sqrt(8/9) * n , 0, -1/3 * n),
             (- math.sqrt(2/9) * n, math.sqrt(2/3) * n, -1/3 * n),
@@ -463,13 +463,14 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         glNewList(list, GL_COMPILE)
 
         #NOTE: The 6 vertices of the octahedron
-        verticies = (
-            (0, 1, 0),      #top tip
-            (1, 0, 1),     #front right
-            (1, 0, -1),    #back right
-            (-1, 0, -1),   #back left
-            (-1, 0, 1),    #front left
-            (0, -1, 0)      #bottom tip
+        r2 = math.sqrt(2)
+        verticies = (  
+            (0, r2, 0), #top tip
+            (0, 0, r2), #front right
+            (r2, 0, 0), #back right
+            (0, 0, -r2), #back left
+            (-r2, 0, 0), #front left
+            (0, -r2, 0)  #bottom tip
         )
 
         #NOTE: The 12 edges of the pyramid
