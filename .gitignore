@@ -1,0 +1,13 @@
+# created by virtualenv automatically
+**__pycache__
+**.vscode
+**build
+**dist
+**extra
+**include
+**Lib
+**Scripts
+
+*.spec
+
+pyvenv.cfg
