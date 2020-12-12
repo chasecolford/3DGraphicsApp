@@ -1,0 +1,11 @@
+glfw==2.0.0
+multipledispatch==0.6.0
+numpy==1.19.4
+Pillow==8.0.1
+pygame==2.0.0
+PyOpenGL==3.1.5
+PyOpenGL-accelerate==3.1.5
+pyrr==0.10.3
+PySide2==5.15.2
+shiboken2==5.15.2
+six==1.15.0

@@ -57,11 +57,11 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
     Helpers
     """
     def setSurfaceColor(self, color):
-        """Set the color of the cube object RGBA"""
+        """Set the color of the current object RGBA"""
         self.surfaceColor = color
 
     def setEdgeColor(self, color):
-        """Set the color of the cube object RGBA"""
+        """Set the color of the current object RGBA"""
         self.edgeColor = color
 
     def toggleAnimation(self):
@@ -146,22 +146,25 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
     """
     # slots
     def setXRotSpeed(self, speed):
+        """Set the X-axis rotation speed for the current shape"""
         self.x_rot_speed = speed
 
     def setYRotSpeed(self, speed):
+        """Set the X-axis rotation speed for the current shape"""
         self.y_rot_speed = speed
 
     def setZRotSpeed(self, speed):
+        """Set the X-axis rotation speed for the current shape"""
         self.z_rot_speed = speed
 
     def step(self):
         """Move the shape one step forward via timer"""
         #NOTE: we ideally would implement Quaternions here so we are not gimbal locked half the time :)
-        if self.animate:
-            self.x_shape_rot += (self.x_rot_speed / 20) % 360
-            self.y_shape_rot += (self.y_rot_speed / 20) % 360
-            self.z_shape_rot += (self.z_rot_speed / 20) % 360
-            self.update()
+        if self.animate: # if we are in animation mode
+            self.x_shape_rot += (self.x_rot_speed / 20) % 360 # our current rotation + the new rotation amount modulo 360
+            self.y_shape_rot += (self.y_rot_speed / 20) % 360 # our current rotation + the new rotation amount modulo 360
+            self.z_shape_rot += (self.z_rot_speed / 20) % 360 # our current rotation + the new rotation amount modulo 360
+            self.update() # call update
 
     """
     Shape Functions
@@ -214,7 +217,7 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         # draw the triangle surfaces (4)
         glBegin(GL_TRIANGLES)
         glColor4fv(self.surfaceColor)
-        for surface in triSurfaces: # for each of the triangle surfaces
+        for surface in triSurfaces: 
             for vertex in surface:
                 glVertex3fv(verticies[vertex])
         glEnd()
