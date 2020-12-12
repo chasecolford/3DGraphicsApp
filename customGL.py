@@ -1,10 +1,12 @@
+#NOTE: In progress -> Rainbow mode and pulsing/sweeping mode for colors/extras
 import numpy as np
 import math
 import pyrr
+import random
 from PIL import Image
 from PySide2.QtGui import QOpenGLFunctions
 from PySide2.QtWidgets import QApplication, QMessageBox, QOpenGLWidget
-from PySide2.QtCore import Signal, SIGNAL, SLOT, QTimer
+from PySide2.QtCore import QTime, Signal, SIGNAL, SLOT, QTimer
 
 try:
     from OpenGL.GL import *
@@ -41,9 +43,17 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         self.surfaceColor = (1.0, 1.0, 0.0, 1.0) #RGBA -> Yellow
         self.edgeColor = (0.0, 0.0, 1.0, 1.0) #RGBA -> Blue
 
+        # Don't forget to initialize your values or OpenGL will NOT be happy :)
+        self.randomColorArray = [(random.random(), random.random(), random.random(), 1) for x in range(50)] # holds random vertex points for rainbowMode, larger than any amount of expected verts
+
         self.animate = True # stores whether or not to play rotation/animation this each frame -> set from parent UI
         self.textureMode = False # used to decide whether we draw colors or textures on shapes -> set from parent UI
+        
+        # Rainbow mode helpers
         self.rainbowMode = False # rainbow mode means we color every vertex on the shape an RNG color each frame -> set from parent UI
+        self.rainbowPaint = False # this is updated in the main loop via timer, this flag tells us whether to update the colors or not
+        self.ticks = 1 # tracks frames since last paint for random paint mode
+        self.rainbowSpeed = 30 # this value comes from the slider and determines how fast we update the rainbow mode painting, value == frames we wait (based on clock time @ ~10ms each)
 
         # define the current rotations and rotation speeds for each axis (x,y,z)
         self.x_rot_speed = 0
@@ -53,6 +63,11 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         self.z_rot_speed = 0
         self.z_shape_rot = 0
 
+        #NOTE: This is effectively the main loop -> we establish a 10ms callback that calls self.step() that will process animations/rotations over that time
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.step)
+        self.timer.start(10)
+        
     """
     Helpers
     """
@@ -76,6 +91,9 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         """Toggles rainbow mode"""
         self.rainbowMode = not self.rainbowMode
     
+    def setRainbowModeSpeed(self, speed):
+        """Sets the speed of rainbow mode paint updates, higher = faster, range(1-10) expected"""
+        self.rainbowSpeed = speed
     """
     Open GL Functions
     """
@@ -93,11 +111,6 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         self.shapes[1] = self.makePyramid() # make a pyramid and store it in index 1 of the shapes array
         self.shapes[2] = self.makeTetrahedron() # make a tetreahedron and store it in index 2 of the shapes array
         self.shapes[3] = self.makeOctahedron() # make an octahedron and store it in index 3 of the shapes array
-
-        #NOTE: This is effectively the main loop -> we establish a 10ms callback that calls self.step() that will process animations/rotations over that time
-        timer = QTimer(self)
-        timer.timeout.connect(self.step)
-        timer.start(10)
 
         #NOTE: Testing these for transparency --> seems to work okay... more here: https://stackoverflow.com/questions/1617370/how-to-use-alpha-transparency-in-opengl
         # glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA) 
@@ -158,7 +171,7 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         self.z_rot_speed = speed
 
     def step(self):
-        """Move the shape one step forward via timer"""
+        """Move the shape one step forward via timer, update rainbow mode as needed via timer and ticks"""
         #NOTE: we ideally would implement Quaternions here so we are not gimbal locked half the time :)
         if self.animate: # if we are in animation mode
             self.x_shape_rot += (self.x_rot_speed / 20) % 360 # our current rotation + the new rotation amount modulo 360
@@ -166,73 +179,51 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
             self.z_shape_rot += (self.z_rot_speed / 20) % 360 # our current rotation + the new rotation amount modulo 360
             self.update() # call update
 
+        # if we are in rainbow mode
+        if self.rainbowMode:
+
+            # used to decide whether or not to paint in rainbow mode to avoid flickering -> trying every 3 frames ~ 30ms currently
+            # if this is a paint frame
+            if self.ticks % (51 - self.rainbowSpeed) == 0: # rainbow speed range 1 - 10, since we want 10 to be faster, we do this math first -> 10 is every frame, 1 is every 10 frames
+
+                # generate a new random color array
+                self.randomColorArray = [(random.random(), random.random(), random.random(), 1) for x in range(50)] # make it larger than any amount of verts we'd expect to see
+                self.rainbowPaint = True
+                self.ticks = 1
+
+            # if this is not a paint frame, incrment ticks, which tracks frames since last paint for random mode
+            else:
+                self.rainbowPaint = False
+                self.ticks += 1
+        
     """
     Shape Functions
     """
-    def makePyramid(self):
-        """Makes a square base pyramid with 4 traingle sides"""
-        list = glGenLists(1)
-        glNewList(list, GL_COMPILE)
+    def drawShape(self, shape, dx, dy, dz, rotation):
+        """Helper to translate, rotate and draw the shape."""
+        if self.textureMode:
+            #NOTE: THIS WILL BE USED FOR TEXTURE MODES
+            pass
+        else:
+            # this draws the current shape from th shapes array depending on the shape index, which comes from the main UI "shapeComboBox"
+            if self.shapeIndex == 0:
+                self.shapes[self.shapeIndex] = self.makeCube()
+            elif self.shapeIndex == 1:
+                self.shapes[self.shapeIndex] = self.makePyramid()
+            elif self.shapeIndex == 2:
+                self.shapes[self.shapeIndex] = self.makeTetrahedron()
+            elif self.shapeIndex == 3:
+                self.shapes[self.shapeIndex] = self.makeOctahedron()
+            
+            glPushMatrix()
+            if self.animate:
+                glTranslated(dx, dy, dz)
+                glRotated(rotation[0], 1.0, 0.0, 0.0)
+                glRotated(rotation[1], 0.0, 1.0, 0.0)
+                glRotated(rotation[2], 0.0, 0.0, 1.0)
+            glCallList(shape)
+            glPopMatrix()
 
-        #NOTE: The 5 vertices of the pyramid
-        verticies = (
-            (0, 1, 0),      #tip
-            (1, -1, 1),     #front right
-            (1, -1, -1),    #back right
-            (-1, -1, -1),   #back left
-            (-1, -1, 1)     #front left
-        )
-
-        #NOTE: The 8 edges of the pyramid
-        edges = (
-            (0, 1), # tip -> front right
-            (0, 2), # tip -> back right
-            (0, 3), # tip -> back left
-            (0, 4), # tip -> front left
-            (1, 2), # front right -> back right
-            (2, 3), # back right -> back left
-            (3, 4), # back left -> front left
-            (4, 1)  # front left -> front right
-        )
-
-        #NOTE: The 4 traingular faces of the pyramid
-        triSurfaces = (
-            (0, 1, 2), # tip -> front right -> back right
-            (0, 2, 3), # tip -> back right -> back left
-            (0, 3, 4), # tip -> back left -> front left
-            (0, 4, 1), # tip -> front left -> front right
-        )
-
-        #NOTE: The 1 square base of the pyramid
-        baseSurface = (1, 2, 3, 4) # front right -> back right -> back left -> front left
-        
-        # draw the edges (8)
-        glBegin(GL_LINES)
-        glColor4fv(self.edgeColor)
-        for edge in edges:
-            for vertex in edge:
-                glVertex3fv(verticies[vertex])
-        glEnd()
-
-        # draw the triangle surfaces (4)
-        glBegin(GL_TRIANGLES)
-        glColor4fv(self.surfaceColor)
-        for surface in triSurfaces: 
-            for vertex in surface:
-                glVertex3fv(verticies[vertex])
-        glEnd()
-
-        # draw the square base (1)
-        glBegin(GL_QUADS)
-        glColor4fv(self.surfaceColor)
-        for vertex in baseSurface:
-            glVertex3fv(verticies[vertex])
-        glEnd()
-
-        glEndList()
-
-        return list
-        
     def makeCube(self):
         """Makes a cube"""
         list = glGenLists(1)
@@ -286,16 +277,117 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
 
         # draw the surfaces of the cube
         glBegin(GL_QUADS)
-        glColor4fv(self.surfaceColor)
+        i = 0
         for surface in surfaces:
             for vertex in surface:
-                glVertex3fv(verticies[vertex])
+
+                # if we are in rainbowMode, draw random colors for each vertex -> only do this every N frames or else it is too flickery
+                if self.rainbowMode:
+                    
+                    # draw what is in the rainbowArray -> this array is managed by timers in the stop function
+                    glColor4fv(self.randomColorArray[i]) # paint the colors at this index in the randomColorArray
+                    i += 1 # increment our index helper
+
+                # if we are not in rainbowMode, paint the colors of the
+                else:
+                    glColor4fv(self.surfaceColor)
+
+                glVertex3fv(verticies[vertex]) # we always draw the vertex regardless
         glEnd()
 
         glEndList()
 
         return list
-    
+
+    def makePyramid(self):
+        """Makes a square base pyramid with 4 traingle sides"""
+        list = glGenLists(1)
+        glNewList(list, GL_COMPILE)
+
+        #NOTE: The 5 vertices of the pyramid
+        verticies = (
+            (0, 1, 0),      #tip
+            (1, -1, 1),     #front right
+            (1, -1, -1),    #back right
+            (-1, -1, -1),   #back left
+            (-1, -1, 1)     #front left
+        )
+
+        #NOTE: The 8 edges of the pyramid
+        edges = (
+            (0, 1), # tip -> front right
+            (0, 2), # tip -> back right
+            (0, 3), # tip -> back left
+            (0, 4), # tip -> front left
+            (1, 2), # front right -> back right
+            (2, 3), # back right -> back left
+            (3, 4), # back left -> front left
+            (4, 1)  # front left -> front right
+        )
+
+        #NOTE: The 4 traingular faces of the pyramid
+        triSurfaces = (
+            (0, 1, 2), # tip -> front right -> back right
+            (0, 2, 3), # tip -> back right -> back left
+            (0, 3, 4), # tip -> back left -> front left
+            (0, 4, 1), # tip -> front left -> front right
+        )
+
+        #NOTE: The 1 square base of the pyramid
+        baseSurface = (1, 2, 3, 4) # front right -> back right -> back left -> front left
+        
+        # draw the edges (8)
+        glBegin(GL_LINES)
+        glColor4fv(self.edgeColor)
+        for edge in edges:
+            for vertex in edge:
+                glVertex3fv(verticies[vertex])
+        glEnd()
+
+        # draw the triangle surfaces (4)
+        glBegin(GL_TRIANGLES)
+        i = 0
+        for surface in triSurfaces:
+            for vertex in surface:
+
+                # if we are in rainbowMode, draw random colors for each vertex -> only do this every N frames or else it is too flickery
+                if self.rainbowMode:
+                    
+                    # draw what is in the rainbowArray -> this array is managed by timers in the stop function
+                    glColor4fv(self.randomColorArray[i]) # paint the colors at this index in the randomColorArray
+                    i += 1 # increment our index helper
+
+                # if we are not in rainbowMode, paint the colors of the
+                else:
+                    glColor4fv(self.surfaceColor)
+
+                glVertex3fv(verticies[vertex]) # we always draw the vertex regardless
+        glEnd()
+
+        # draw the square base (1)
+        glBegin(GL_QUADS)
+        i = 0
+        for vertex in baseSurface:
+            
+            # if we are in rainbowMode, draw random colors for each vertex -> only do this every N frames or else it is too flickery
+            if self.rainbowMode:
+                
+                # draw what is in the rainbowArray -> this array is managed by timers in the stop function
+                glColor4fv(self.randomColorArray[i]) # paint the colors at this index in the randomColorArray
+                i += 1 # increment our index helper
+
+            # if we are not in rainbowMode, paint the colors of the
+            else:
+                glColor4fv(self.surfaceColor)
+
+            glVertex3fv(verticies[vertex]) # we always draw the vertex regardless
+
+        glEnd()
+
+        glEndList()
+
+        return list
+        
     def makeTetrahedron(self):
         """Makes a tetrahedron"""
         list = glGenLists(1)
@@ -339,10 +431,22 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
 
         # draw the triangle surfaces (4)
         glBegin(GL_TRIANGLES)
-        glColor4fv(self.surfaceColor)
-        for surface in surfaces: # for each of the triangle surfaces
+        i = 0
+        for surface in surfaces:
             for vertex in surface:
-                glVertex3fv(verticies[vertex])
+
+                # if we are in rainbowMode, draw random colors for each vertex -> only do this every N frames or else it is too flickery
+                if self.rainbowMode:
+                    
+                    # draw what is in the rainbowArray -> this array is managed by timers in the stop function
+                    glColor4fv(self.randomColorArray[i]) # paint the colors at this index in the randomColorArray
+                    i += 1 # increment our index helper
+
+                # if we are not in rainbowMode, paint the colors of the
+                else:
+                    glColor4fv(self.surfaceColor)
+
+                glVertex3fv(verticies[vertex]) # we always draw the vertex regardless
         glEnd()
 
         glEndList()
@@ -387,7 +491,7 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         )
 
         #NOTE: The 8 traingular faces of the octahedron
-        triSurfaces = (
+        surfaces = (
             (0, 1, 2),  # top tip -> front right -> back right
             (0, 2, 3),  # top tip -> back right -> back left
             (0, 3, 4),  # top tip -> back left -> front left
@@ -408,10 +512,22 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
 
         # draw the triangle surfaces (8)
         glBegin(GL_TRIANGLES)
-        glColor4fv(self.surfaceColor)
-        for surface in triSurfaces: # for each of the triangle surfaces
+        i = 0
+        for surface in surfaces:
             for vertex in surface:
-                glVertex3fv(verticies[vertex])
+
+                # if we are in rainbowMode, draw random colors for each vertex -> only do this every N frames or else it is too flickery
+                if self.rainbowMode:
+                    
+                    # draw what is in the rainbowArray -> this array is managed by timers in the stop function
+                    glColor4fv(self.randomColorArray[i]) # paint the colors at this index in the randomColorArray
+                    i += 1 # increment our index helper
+
+                # if we are not in rainbowMode, paint the colors of the
+                else:
+                    glColor4fv(self.surfaceColor)
+
+                glVertex3fv(verticies[vertex]) # we always draw the vertex regardless
         glEnd()
 
         glEndList()
@@ -449,31 +565,6 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
     #NOTE: TODO
     def makeTorus(self):
         pass
-
-    def drawShape(self, shape, dx, dy, dz, rotation):
-        """Helper to translate, rotate and draw the shape."""
-        if self.textureMode:
-            #NOTE: THIS WILL BE USED FOR TEXTURE MODES
-            pass
-        else:
-            # this draws the current shape from th shapes array depending on the shape index, which comes from the main UI "shapeComboBox"
-            if self.shapeIndex == 0:
-                self.shapes[self.shapeIndex] = self.makeCube()
-            elif self.shapeIndex == 1:
-                self.shapes[self.shapeIndex] = self.makePyramid()
-            elif self.shapeIndex == 2:
-                self.shapes[self.shapeIndex] = self.makeTetrahedron()
-            elif self.shapeIndex == 3:
-                self.shapes[self.shapeIndex] = self.makeOctahedron()
-            
-            glPushMatrix()
-            if self.animate:
-                glTranslated(dx, dy, dz)
-                glRotated(rotation[0], 1.0, 0.0, 0.0)
-                glRotated(rotation[1], 0.0, 1.0, 0.0)
-                glRotated(rotation[2], 0.0, 0.0, 1.0)
-            glCallList(shape)
-            glPopMatrix()
 
     """
     Texture Fuctions

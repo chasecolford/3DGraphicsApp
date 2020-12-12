@@ -47,7 +47,7 @@ class MainWindow(QMainWindow):
         self.shapeComboBox = self.ui.shapeComboBox
         self.shapeComboBoxLabel = self.ui.shapeComboBoxLabel
 
-        # Rotation sliders -> each of these calls self.setupSlider() we configures the basics for them, as well as binds their emit signals to slot functions
+        # Rotation sliders -> each of these calls self.setupSlider() which configures the basics for them, as well as binds their emit signals to slot functions
         self.xRotSlider = self.setupSlider(self.ui.xRotSlider, self.glWidget.xRotationChanged, self.glWidget.setXRotSpeed)
         self.yRotSlider = self.setupSlider(self.ui.yRotSlider, self.glWidget.yRotationChanged, self.glWidget.setYRotSpeed)
         self.zRotSlider = self.setupSlider(self.ui.zRotSlider, self.glWidget.zRotationChanged, self.glWidget.setZRotSpeed)
@@ -108,6 +108,14 @@ class MainWindow(QMainWindow):
         self.alphaEdgeSlider = self.ui.alphaEdgeSlider
         self.alphaEdgeSliderLabel = self.ui.alphaEdgeSliderLabel
         self.alphaEdgeSlider.setValue(255) #NOTE: start max
+
+        """
+        Rainbow mode
+        """
+        # rainbow mode speed slider
+        self.rainbowModeSpeedSlider = self.ui.rainbowModeSpeedSlider
+        self.rainbowModeSpeedSlider.setValue(30) #start close to mid speed
+        self.rainbowModeSpeedSliderLabel = self.ui.rainbowModeSpeedSliderLabel
         
         """
         Signals & Slots | UI functions
@@ -135,6 +143,10 @@ class MainWindow(QMainWindow):
         # this sets the shape to use RNG colors for each vertex each frame
         self.rainbowModeRadioButton.toggled.connect(self.onRainbowModeRadioButtonToggled)
 
+        # rainbow mode speed -> calls onRainbowModeSpeedSliderValueChanged()
+        # this adjusts the speed of the repaints for rainbow mode
+        self.rainbowModeSpeedSlider.valueChanged.connect(self.onRainbowModeSpeedSliderValueChanged)
+        
         # toggle animation -> calls the onToggleAnimationPushButtonToggled() function
         self.toggleAnimationPushButton.clicked.connect(self.onToggleAnimationPushButtonToggled)
         
@@ -151,6 +163,9 @@ class MainWindow(QMainWindow):
 
         return slider
 
+    """
+    General Sliders and Buttons: shapes, rainbow mode, toggle animation, etc.
+    """
     def onShapeComboBoxCurrentIndexChanged(self):
         """Called when the shape combobox index changes"""
         self.glWidget.setCurrentShape(self.shapeComboBox.currentIndex()) # update our GL Widget shape index
@@ -158,6 +173,10 @@ class MainWindow(QMainWindow):
     def onRainbowModeRadioButtonToggled(self):
         """Called when the rainbow mode radiobutton is toggled"""
         self.glWidget.toggleRainbowMode() # Toggle the GL Widgets rainbow mode boolean
+
+    def onRainbowModeSpeedSliderValueChanged(self):
+        """Adjusts the speed of rainbow mode"""
+        self.glWidget.setRainbowModeSpeed(self.rainbowModeSpeedSlider.value()) # set the value of the slider as the speed of the gl widgets rainbow mode value
 
     def onToggleAnimationPushButtonToggled(self):
         """Called when the toggle animation pushbutton is toggled"""
