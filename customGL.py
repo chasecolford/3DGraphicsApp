@@ -90,8 +90,9 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
         self.rainbowMode = not self.rainbowMode
     
     def setRainbowModeSpeed(self, speed):
-        """Sets the speed of rainbow mode paint updates, higher = faster, range(1-10) expected"""
+        """Sets the speed of rainbow mode paint updates, higher = faster, range(1-50) expected"""
         self.rainbowSpeed = speed
+
     """
     Open GL Functions
     """

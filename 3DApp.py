@@ -36,10 +36,13 @@ class MainWindow(QMainWindow):
         """
         # Select shape label
         self.shapeComboBoxLabel = self.ui.shapeComboBoxLabel
+        
         # Surface Sliders Label
         self.surfaceSlidersLabel = self.ui.surfaceSlidersLabel
+
         # Edge Sliders label
         self.edgeSlidersLabel = self.ui.edgeSlidersLabel
+
         # Extras label
         self.extrasLabel = self.ui.extrasLabel
 
