@@ -474,7 +474,7 @@ class GLWidget(QOpenGLWidget, QOpenGLFunctions): # QOpenGLWidget, QOpenGLFunctio
             (0, -r2, 0)  #bottom tip
         )
 
-        #NOTE: The 12 edges of the pyramid
+        #NOTE: The 12 edges of the octohedron
         edges = (
             (0, 1),     # top tip -> front right
             (0, 2),     # top tip -> back right

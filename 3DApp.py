@@ -231,11 +231,11 @@ class MainWindow(QMainWindow):
         b = self.blueSlider.value()
         a = self.alphaSlider.value()
 
-        # convert these to between 0 - 1 (i.e. divide by 255 if they are not already 0)
-        r = r / 255.0 if r else 0 
-        g = g / 255.0 if g else 0
-        b = b / 255.0 if b else 0
-        a = a / 255.0 if a else 0
+        # convert these to between 0 - 1 (i.e. divide by 255)
+        r = r / 255.0 
+        g = g / 255.0 
+        b = b / 255.0 
+        a = a / 255.0 
 
         return (r, g, b, a)
 
@@ -247,11 +247,11 @@ class MainWindow(QMainWindow):
         b = self.blueEdgeSlider.value()
         a = self.alphaEdgeSlider.value()
 
-        # convert these to between 0 - 1 (i.e. divide by 255 if they are not already 0)
-        r = r / 255.0 if r else 0 
-        g = g / 255.0 if g else 0
-        b = b / 255.0 if b else 0
-        a = a / 255.0 if a else 0
+        # convert these to between 0 - 1 (i.e. divide by 255)
+        r = r / 255.0 
+        g = g / 255.0 
+        b = b / 255.0 
+        a = a / 255.0 
 
         return (r, g, b, a)
 
